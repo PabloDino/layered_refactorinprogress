@@ -29,6 +29,23 @@ from keras import backend as K
 import settings
 import utils
 
+
+from utils import importData, preprocess, recall_m, precision_m, f1_m, TimingCallback, encPredict
+from timeit import default_timer as timer
+
+
+totalLabel = 50
+
+# model parameters for training
+batchSize = 128
+epochs = 100
+latent_dim=8
+dataSize=128
+
+timesteps = 128 # Length of your sequences
+input_dim = 128 
+
+
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 filepath = 'lstmCheck-{epoch:02d}-{val_loss:.2f}-{val_acc:.2f}-{val_f1_m:.2f}-{val_precision_m:.2f}-{val_recall_m:.2f}-{acc:.2f}-.hdf5'
@@ -164,38 +181,21 @@ def cloneBranchedModel(modelbase, startLayer,totalLabel):
     out = Activation('softmax')(lastDense)
     newModel = Model(inputs= inLyr, outputs=out)
 
-    return newModel,origBranch,otherBranch
+    return newModel
     
 
 
 if __name__ == '__main__':
-    dataset =  importData('base',train=True)#(train, test) =  
-    nextdataset =   importData('next',train=True)#(nextTrain,nextTest) = 
-    random.shuffle(dataset)
-    availCount= int(totalRecordCount*0.5)
-    availset = dataset[:availCount]
-    availset = mergeSets2(availset, nextdataset)#train, test, nextTrain, nextTest)
-    availCount+=len(nextdataset)
-    trainDataEndIndex = int(availCount*0.8)
-    random.shuffle(availset)
-    train = availset[:trainDataEndIndex]
-    test = availset[trainDataEndIndex:]
-    x, y = zip(*availset)
-    x_train = x[:trainDataEndIndex]
-    x_test = x[trainDataEndIndex:]   
-    ycat = to_categorical(y)
-    y_traincat = ycat[:trainDataEndIndex]
-    y_testcat = ycat[trainDataEndIndex:]   
 
-    x_train = np.array(x_train)
-    x_test = np.array(x_test)
-    x_train = np.expand_dims(x_train,-1)
-    x_test = np.expand_dims(x_test,-1)
-    x_train = x_train.astype('float32') / 255
-    x_test = x_test.astype('float32') / 255
+    (trainx,trainy), (testx, testy) = importData()#.load_data()
+    
+    x_train, train_labels = preprocess(trainx,trainy)
+    x_test, test_labels = preprocess(testx,testy)
 
+    y_traincat = np.array(keras.utils.to_categorical(train_labels, totalLabel))
+    y_testcat = np.array(keras.utils.to_categorical(test_labels, totalLabel))
 
-    modelbase =keras.models.load_model('50p/Model.1.hdf5',custom_objects={'tf': tf, 'f1_m':f1_m, 'precision_m':precision_m, 'recall_m':recall_m})#, custom_objects={'sampling': sampling}, compile =False)
+    modelbase =keras.models.load_model('./models/Model.1.hdf5',custom_objects={'tf': tf, 'f1_m':f1_m, 'precision_m':precision_m, 'recall_m':recall_m})#, custom_objects={'sampling': sampling}, compile =False)
     #################################################################################
     
     orig_in = modelbase.layers[0].get_output_at(0)    
@@ -214,7 +214,7 @@ if __name__ == '__main__':
       X_test_encoded = encPredict(encModel,x_test)
       startLyr =i
           
-      modelNew,origBranch,otherBranch= cloneBranchedModel(modelbase, startLyr, totalLabel)
+      modelNew = cloneBranchedModel(modelbase, startLyr, totalLabel)
 
       try:
          fitCombined(X_train_encoded, X_test_encoded,  y_traincat, y_testcat, modelNew, startLyr)  

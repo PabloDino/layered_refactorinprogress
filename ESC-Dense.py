@@ -1,9 +1,45 @@
+from keras.layers import Lambda, Input, Dense
+from keras.models import Model
+from keras.datasets import mnist
+from keras.losses import mse, binary_crossentropy
+from keras.utils import plot_model
+from keras import backend as K
+from keras.utils import to_categorical
+from keras.models import Sequential, Model
+from keras.layers import Activation, Dense, Dropout, Conv1D,Conv2D, GlobalAveragePooling2D, InputLayer, \
+                         Flatten, MaxPooling2D,MaxPooling1D, LSTM, ConvLSTM2D, Reshape, Concatenate,concatenate, Input, AveragePooling2D
+from keras.layers.normalization import BatchNormalization   
+
+from keras.optimizers import Adam              
+import tensorflow as tf
+import sys, os
+from time import time
+import numpy as np
+import os
+from config import *
+import datetime
+import random
+import keras.optimizers
+import librosa
+import librosa.display
+import pandas as pd
+import warnings
+from keras import backend as K
+
 
 import utils
-import settings
+
+from utils import importData, preprocess, recall_m, precision_m, f1_m 
+from timeit import default_timer as timer
 
 
 
+# model parameters for training
+totalLabel = 50
+batchSize = 128
+epochs = 100
+latent_dim=8
+dataSize=128
 
 class DenseNet:
     def __init__(self, input_shape=None, dense_blocks=3, dense_layers=-1, growth_rate=12, nb_classes=None,
@@ -13,7 +49,7 @@ class DenseNet:
         if nb_classes == None:
             raise Exception(
                 'Please define number of classes (e.g. num_classes=10). This is required for final softmax.')
-
+.
         if compression <= 0.0 or compression > 1.0:
             raise Exception('Compression have to be a value between 0.0 and 1.0.')
 
@@ -158,7 +194,7 @@ class DenseNet:
     
 
 print('creating net')    
-densenet = DenseNet((128,128,1), nb_classes=10, depth=25)
+densenet = DenseNet((128,128,1), nb_classes=50, depth=25)
 print('building model')    
 
 model, model_comp = densenet.build_model()
@@ -172,9 +208,14 @@ print('compiling model')
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc',f1_m,precision_m, recall_m])
 
 
+(train_data,train_labels), (test_data, test_labels) = importData()#.load_data()
+y_train = np.array(keras.utils.to_categorical(train_labels, totalLabel))
+y_test = np.array(keras.utils.to_categorical(test_labels, totalLabel))
+X_train = np.array([x.reshape( (128, 128, 1) ) for x in train_data])
+X_test = np.array([x.reshape( (128, 128, 1 ) ) for x in test_data])
+    
 
-dataset= importData()
-X_train, X_test, y_train, y_test = preProcess(dataset)
+
 
 model.fit(X_train,
         y=y_train,
@@ -182,5 +223,5 @@ model.fit(X_train,
         batch_size=batchSize,
         validation_data= (X_test, y_test)
         )
-model.save('Incremental/20p/Model.5.final.hdf5')        
+model.save('ESCDense.FULL.hdf5')        
 

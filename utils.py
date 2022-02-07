@@ -27,6 +27,39 @@ from keras import backend as K
 
 from timeit import default_timer as timer
 
+
+# Your data source for wav files
+#baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-aug/'
+#baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-clone/'
+#baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-base50/'
+#baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-Base50p/'
+baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-tst-base50p/'
+#baseFolder = '/home/paul/Downloads/ESC-50-tst2/'
+#nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-aug/'
+#nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-clone/'
+#nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-Next30p/'
+#nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-next30p/'
+nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-tst-next30p/'
+#nextFolder = '/home/paul/Downloads/ESC-50-tst2b/'
+#lastFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-last20p/'
+lastFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-tst-last20p/'
+
+# Total wav records for training the model, will be updated by the program
+totalRecordCount = 0
+
+dataSourceBase=baseFolder#lastFolder
+# Total classification class for your model (e.g. if you plan to classify 10 different sounds, then the value is 10)
+#totalLabel = 10
+
+# model parameters for training
+#batchSize = 128
+#epochs = 100
+#latent_dim=8
+dataSize=128
+
+#timesteps = 128 # Length of your sequences
+#input_dim = 128 
+
 class TimingCallback(keras.callbacks.Callback):
     def __init__(self, logs={}):
         self.logs=[]
@@ -118,7 +151,7 @@ def preprocess(array, labels):
     print("arrshape2:", array.shape)
     array = np.array(array).astype("float32") / np.max(array)
     array = np.reshape(array, (lookback*len(array), dataSize, dataSize,1))
-     
+    labels = np.array(labels) 
     return array, labels
 
 
@@ -163,12 +196,19 @@ def temporalize(X, y, lookback):
 # File name pattern: {WavFileName}-{ClassLabel}
 # e.g. 0001-0 (0001 is the name for the wav and 0 is the class label)
 # The program only interested in the class label and doesn't care the wav file name
-def importData():
+def importData(setname='full'):
     dataSet = []
     lblmap ={}
     lblid=0
     totalCount = 0
-    progressThreashold = 100
+    if (setname) == 'full':
+        dataSourceBase=baseFolder
+        totalLabel=50
+   
+    if (setname) == 'base':
+        dataSourceBase=baseFolder
+    if (setname) == 'next':
+        dataSourceBase=nextFolder
     dirlist = os.listdir(dataSourceBase)
     for dr in dirlist:
       dataSource = os.path.join(dataSourceBase,dr)
@@ -176,8 +216,6 @@ def importData():
         for file in files:
             fileName, fileExtension = os.path.splitext(file)
             if fileExtension != '.wav': continue
-            if totalCount % progressThreashold == 0:
-                print('Importing data count:{}'.format(totalCount))
             wavFilePath = os.path.join(root, file)
             y, sr = librosa.load(wavFilePath, duration=2.97)
             ps = librosa.feature.melspectrogram(y=y, sr=sr)
@@ -266,4 +304,52 @@ def findLayer(lst, layer):
         if (lst[i].name.split('/')[0]==namecheck):
            pos=i
     return pos
+    
+def mergeSets(dset,  nextdset):
+    combSet =[]
+    for i in range(max(len(dset),len(nextdset))):
+        if (i<len(dset)):
+           combSet.append(dset[i])
+        if (i<len(nextdset)):
+           combSet.append(nextdset[i])
+    return combSet
 
+'''
+   
+def getAggregates(logs):
+   mx=0
+   mn=10000
+   for i in range(len(logs)):
+       if (logs[i]>mx):
+          mx=logs[i]
+       if (logs[i]<mn):
+          mn=logs[i]
+   sumtime = sum(logs)
+   avgtime = 1.0*sumtime/len(logs)
+
+   return sumtime, avgtime, mx,mn    
+    
+    
+def evaluateCheckPoints(prefix):
+    files=[]
+    for fle in os.listdir():
+        if fle.startswith(prefix):
+            files.append(fle)
+    maxvacc=0
+    maxdx=0
+    for dx in range(len(files)):
+        arr = files[dx].split("-")
+        if  float(arr[3])>maxvacc:
+            maxvacc = float(arr[3])
+            maxdx = dx
+    arr = files[maxdx].split("-")
+    retloss = float(arr[2])
+    retf1 = float(arr[4])
+    retprecision = float(arr[5])
+    retrecall = float(arr[6])
+    acc = float(arr[7])
+    for fle in files:
+        os.remove(fle)
+    return retloss,acc, maxvacc, retf1, retprecision, retrecall
+
+'''

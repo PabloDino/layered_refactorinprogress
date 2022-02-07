@@ -1,8 +1,46 @@
+from keras.layers import Lambda, Input, Dense
+from keras.models import Model
+from keras.datasets import mnist
+from keras.losses import mse, binary_crossentropy
+from keras.utils import plot_model
+from keras import backend as K
+from keras.utils import to_categorical
+from keras.models import Sequential, Model
+from keras.layers import Activation, Dense, Dropout, Conv1D,Conv2D, GlobalAveragePooling2D, InputLayer, \
+                         Flatten, MaxPooling2D,MaxPooling1D, LSTM, ConvLSTM2D, Reshape, Concatenate,concatenate, Input, AveragePooling2D
+from keras.layers.normalization import BatchNormalization                 
+import tensorflow as tf
+import sys, os
+from time import time
+import numpy as np
+import os
+from config import *
+import datetime
+import random
+import keras.optimizers
+import librosa
+import librosa.display
+import pandas as pd
+import warnings
+from keras import backend as K
+
+
 import utils
 
-import settings
+from utils import importData, preprocess, recall_m, precision_m, f1_m 
+from timeit import default_timer as timer
 
 
+totalLabel = 50
+
+# model parameters for training
+batchSize = 128
+epochs = 100
+latent_dim=8
+dataSize=128
+
+timesteps = 128 # Length of your sequences
+input_dim = 128 
 
 def buildModel(X_train, X_test, y_train, y_test):
  
@@ -57,9 +95,7 @@ def buildModel(X_train, X_test, y_train, y_test):
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
 
-    timestr = time.strftime('%Y%m%d-%H%M%S')
-    modelName = 'Incremental/20p/Model.1.'.format(timestr)
-    modelName =modelName+".hdf5"
+    modelName = 'LSTM.full.hdf5'
     model.save('{}'.format(modelName))
 
     print('Model exported and finished')

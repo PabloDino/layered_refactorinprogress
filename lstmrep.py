@@ -17,9 +17,6 @@ import settings
 import utils
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-import denseBase
-from denseBase import DenseBase
-
 from time import time
 import numpy as np
 #import matplotlib.pyplot as plt
@@ -35,49 +32,12 @@ import pandas as pd
 import warnings
 from keras import backend as K
 
+from utils import importData, preprocess, recall_m, precision_m, f1_m, TimingCallback, encPredict, mergeSets
 
 
 
-def encPredict(enc, x_train):
-   viewBatch=1
-   numrows = x_train.shape[0]
-   z_mean=[]
-   for i in range(0,int((numrows/viewBatch))):#print(x_train.shape)
-      sample = x_train[i*viewBatch:i*viewBatch+viewBatch,]
-      #z_mean8, _, _ = enc.predict([[sample, sample]])
-      z_mean8 = enc.predict(sample)
-      z_mean.append(z_mean8)
-   z_mean=np.array(z_mean) 
-   return z_mean
-
-
-def decPredict(dec, x_train):
-   viewBatch=1
-   numrows = x_train.shape[0]
-   for i in range(0,int((numrows/viewBatch))):#print(x_train.shape)
-      sample = x_train[i*viewBatch:i*viewBatch+viewBatch,]
-      z_mean8 = dec.predict(sample)
-      if (i==0):
-        z_mean=z_mean8
-      else:
-        z_mean = np.concatenate((z_mean,z_mean8), axis=0)
-      if (i%200==0) and i>1:  
-        print("dec stat",z_mean.shape)
-   return z_mean
-
-
+totalLabel =0
  
-def mergeSets2(dset,  nextdset):
-    combSet =[]
-    for i in range(max(len(dset),len(nextdset))):
-        if (i<len(dset)):
-           combSet.append(dset[i])
-        if (i<len(nextdset)):
-           combSet.append(nextdset[i])
-    return combSet
-        
-
-
 filepath = 'lstmrepCheck-{epoch:02d}-{val_loss:.2f}-{val_acc:.2f}-{val_f1_m:.2f}-{val_precision_m:.2f}-{val_recall_m:.2f}-{acc:.2f}-.hdf5'
 checkpoint = keras.callbacks.ModelCheckpoint(filepath, monitor='val_acc', verbose=0, save_best_only=False, save_weights_only=False, mode='auto', period=1)
 cb = TimingCallback()
@@ -144,44 +104,7 @@ def fitCombined(xTrain50,xTrain20,xTest50,xTest20, y_train, y_test,combModel,fix
     outfile.write(str(fixedLayers)+","+ str(loss)+","+ str(acc)+","+ str(valacc) +","+str(f1)+","+str(precision)+","+str(recall)+","+str(sumtime)+","+str(avgtime)+","+str(max_itertime)+","+str(min_itertime)+"\n" )
     outfile.close()
     print('Model exported and finished')
-    
-def getAggregates(logs):
-   mx=0
-   mn=10000
-   for i in range(len(logs)):
-       if (logs[i]>mx):
-          mx=logs[i]
-       if (logs[i]<mn):
-          mn=logs[i]
-   sumtime = sum(logs)
-   avgtime = 1.0*sumtime/len(logs)
-
-   return sumtime, avgtime, mx,mn    
-    
-    
-def evaluateCheckPoints(prefix):
-    files=[]
-    for fle in os.listdir():
-        if fle.startswith(prefix):
-            files.append(fle)
-    maxvacc=0
-    maxdx=0
-    for dx in range(len(files)):
-        arr = files[dx].split("-")
-        if  float(arr[3])>maxvacc:
-            maxvacc = float(arr[3])
-            maxdx = dx
-    arr = files[maxdx].split("-")
-    retloss = float(arr[2])
-    retf1 = float(arr[4])
-    retprecision = float(arr[5])
-    retrecall = float(arr[6])
-    acc = float(arr[7])
-    for fle in files:
-        os.remove(fle)
-    return retloss,acc, maxvacc, retf1, retprecision, retrecall
-
-
+ 
 
 def mergeModels(mod50p, mod20p,startLayer):
 
@@ -261,15 +184,17 @@ def replicateListToMatch(inList, reqSize):
 
 if __name__ == '__main__':
     #tensorboard = TensorBoard(log_dir = "logs/{}".format(time()))
-    dataset =  importData('base',train=True)#(train, test) =  
-    print('total recs =', totalRecordCount, '; Total Labels=', totalLabel, lblmap)
-    nextdataset =   importData('next',train=True)#(nextTrain,nextTest) = 
-    print('total recs =', totalRecordCount, '; Total Labels=', totalLabel, lblmap)
-    random.shuffle(dataset)
+    dataset =  importData('base')#(train, test) =  
+    totalRecordCount=len(dataset)
+    
+    #print('total recs =', totalRecordCount, '; Total Labels=', totalLabel, lblmap)
+    nextdataset =   importData('next')#(nextTrain,nextTest) = 
+    #print('total recs =', totalRecordCount, '; Total Labels=', totalLabel, lblmap)
+    #random.shuffle(dataset)
     availCount= int(totalRecordCount*0.5)
     availset = dataset[:availCount]
     #availset = replicateListToMatch(availset,len(nextdataset)/2)
-    availset = mergeSets2(availset, nextdataset)#train, test, nextTrain, nextTest)
+    availset = mergeSets(availset, nextdataset)#train, test, nextTrain, nextTest)
     availCount+=len(nextdataset)
 
     print('AvailCount: {}'.format(availCount))
@@ -280,6 +205,8 @@ if __name__ == '__main__':
     x, y = zip(*availset)
     x_train = x[:trainDataEndIndex]
     x_test = x[trainDataEndIndex:]   
+    print(y)
+    print(type(y))
     ycat = to_categorical(y)
     y_traincat = ycat[:trainDataEndIndex]
     y_testcat = ycat[trainDataEndIndex:]   

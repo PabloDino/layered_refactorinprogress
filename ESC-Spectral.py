@@ -1,24 +1,51 @@
+from keras.layers import Lambda, Input, Dense
+from keras.models import Model
+from keras.datasets import mnist
+from keras.losses import mse, binary_crossentropy
+from keras.utils import plot_model
+from keras import backend as K
+from keras.utils import to_categorical
+from keras.models import Sequential, Model
+from keras.layers import Activation, Dense, Dropout, Conv1D,Conv2D, GlobalAveragePooling2D, InputLayer, \
+                         Flatten, MaxPooling2D,MaxPooling1D, LSTM, ConvLSTM2D, Reshape,Conv2DTranspose, Concatenate,concatenate, Input, AveragePooling2D
+from keras.layers.normalization import BatchNormalization   
+
+from keras.optimizers import Adam              
+import tensorflow as tf
+import sys, os
+from time import time
+import numpy as np
+import os
+from config import *
+import datetime
+import random
+import keras.optimizers
+import librosa
+import librosa.display
+import pandas as pd
+import warnings
+from keras import backend as K
+
+
 import utils
-import settings
 
-def buildModel(dataset):
-    trainDataEndIndex = int(totalRecordCount*0.8)
-    random.shuffle(dataset)
+from utils import importData, preprocess, recall_m, precision_m, f1_m 
+from timeit import default_timer as timer
 
-    train = dataset[:trainDataEndIndex]
-    test = dataset[trainDataEndIndex:]
 
-    X_train, y_train = zip(*train)
-    X_test, y_test = zip(*test)
 
-    X_train = np.array([x.reshape( (128, 128, 1) ) for x in X_train])
-    X_test = np.array([x.reshape( (128, 128, 1 ) ) for x in X_test])
+totalLabel = 50
 
-    Xb_train = X_train.copy()#np.array([x.reshape( (128, 128, 1) ) for x in X_train])
-    Xb_test = X_test.copy()#np.array([x.reshape( (128, 128, 1 ) ) for x in X_test])
+# model parameters for training
+batchSize = 128
+epochs = 100
+latent_dim=8
+dataSize=128
 
-    y_train = np.array(keras.utils.to_categorical(y_train, totalLabel))
-    y_test = np.array(keras.utils.to_categorical(y_test, totalLabel))
+timesteps = 128 # Length of your sequences
+input_dim = 128 
+
+def buildModel():
 
     model_a = Sequential()
 
@@ -67,31 +94,41 @@ def buildModel(dataset):
     dense17=Dense(totalLabel)(drop16)
     out = Activation('softmax')(dense17)
     model = Model(inputs=model_a_in, outputs=out)
-
+    return model
     
-    model.summary()
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc',f1_m,precision_m, recall_m])
+    
 
-    model.fit(X_train,
-        y=y_train,
+model = buildModel()
+ 
+
+
+#model.compile(loss='categorical_crossentropy', optimizer=model_optimizer, metrics=['accuracy'])
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc',f1_m,precision_m, recall_m])
+
+
+(trainx,trainy), (testx, testy) = importData()#.load_data()
+    
+train_data, train_labels = preprocess(trainx,trainy)
+test_data, test_labels = preprocess(testx,testy)
+
+train_labels = np.array(keras.utils.to_categorical(train_labels, totalLabel))
+test_labels = np.array(keras.utils.to_categorical(test_labels, totalLabel))
+
+model.summary()
+print ('xtrain shape is ',train_data.shape)
+print ('ytrain shape is ',train_labels.shape)
+
+print ('xtest shape is ',test_data.shape)
+print ('ytest shape is ',test_labels.shape)
+model.fit(train_data,
+        y=train_labels,
         epochs=epochs,
         batch_size=batchSize,
-        validation_data= (X_test, y_test)
-    )
-
-    score = model.evaluate(X_test,
-        y=y_test)
-
-    print('Test loss:', score[0])
-    print('Test accuracy:', score[1])
-
-    modelName = 'Incremental/20p/Model.2.final.hdf5'
-    model.save(modelName)
-
-
-    print('Model exported and finished')
-
-if __name__ == '__main__':
-    dataSet = importData()
-    buildModel(dataSet)
+        validation_data= (test_data, test_labels)
+        )
     
+  
+modelName = 'esc-spectral.hdf5'
+model.save(modelName)
+
+

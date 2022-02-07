@@ -4,7 +4,7 @@
 #baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-base50/'
 #baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-Base50p/'
 #baseFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-tst-base50p/'
-#baseFolder = '/home/paul/Downloads/ESC-50-tst2b/'
+baseFolder = '/home/paul/Downloads/ESC-50-tst2b/'
 #nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-aug/'
 #nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC-50-clone/'
 nextFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-Next30p/'
@@ -17,7 +17,7 @@ lastFolder = '/home/paul/Downloads/ava_vidprep_supportingModels/ESC50-aug-last20
 # Total wav records for training the model, will be updated by the program
 totalRecordCount = 0
 
-dataSourceBase=lastFolder
+dataSourceBase=baseFolder#lastFolder
 # Total classification class for your model (e.g. if you plan to classify 10 different sounds, then the value is 10)
 totalLabel = 10
 
